@@ -33,6 +33,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bootdb
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
+      PUBLISHER_MANAGER_URL: http://publisher-manager:8080
 
   publisher-manager:
     image: adautomendes/publisher-manager:latest
