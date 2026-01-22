@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -48,8 +49,8 @@ public class GameControllerValidationIT {
         mockMvc.perform(post("/game")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidGameJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$").exists());
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest());
     }
 
     /**

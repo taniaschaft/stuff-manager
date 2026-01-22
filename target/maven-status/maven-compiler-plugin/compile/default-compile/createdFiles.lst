@@ -1,8 +1,5 @@
 com/gamemanager/GameManagerApplication.class
-com/gamemanager/model/NotBlank.class
-com/gamemanager/controller/Valid.class
 com/gamemanager/repository/GameRepository.class
 com/gamemanager/controller/GameController.class
 com/gamemanager/model/Game.class
-com/gamemanager/model/Size.class
 com/gamemanager/service/GameService.class
