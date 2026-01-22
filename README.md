@@ -84,15 +84,9 @@ mvn spring-boot:run
 - Host: `mysql` (internal docker network)
 - Database: `bootdb`
 - User: `user`
-- Password: `password`
-- Root Password: `root`
+- Password: ``
+- Root Password: ``
 - Port: `3306`
-
-**Local Development:**
-- Host: `localhost`
-- Database: `bootdb`
-- User: `user`
-- Password: `password`
 
 ## Sample API Requests
 
@@ -150,9 +144,45 @@ curl http://localhost:8081/game?publisherId=nintendo
 ### Game Manager API Container
 - **Image**: Built from Dockerfile (multi-stage Maven build)
 - **Container**: `game-manager`
-- **Port**: `8081` (mapped from internal port 8080)
+- **Port**: `8081`
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
+
+## Technology Stack
+
+- **Spring Boot**: 3.2.1
+- **Spring Data JPA**: Data persistence
+- **MySQL**: 8.0
+- **Maven**: Build tool
+- **Docker & Docker Compose**: Containerization
+- **Lombok**: Reduces boilerplate code
+- **Jakarta Validation**: Input validation
+- **Java**: 17 (source & target)
+
+## Project Features
+
+- ✅ UUID-based game identification
+- ✅ Publisher-based game filtering
+- ✅ Time tracking per game (date-hour mapping)
+- ✅ Input validation with custom error messages
+- ✅ Docker containerization for easy deployment
+- ✅ MySQL persistence with auto-DDL
+- ✅ CORS support for cross-origin requests
+- ✅ Fixed CVE-2023-22102 (MySQL Connector vulnerability)
+
+## Development Notes
+
+- Entities use Lombok `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor` for clean code
+- JPA `@ElementCollection` for storing timePlayed maps
+- Spring Data JPA `Repository` with custom `findByPublisherId()` method
+- Input validation using Jakarta Bean Validation annotations
+- Service layer for business logic separation
+- Controllers expose three main REST endpoints
+- MySQL uses `spring.jpa.hibernate.ddl-auto=update` for schema management
+
+
+// 
+
 
 ## Troubleshooting
 
@@ -192,35 +222,3 @@ docker-compose up -d --build
 ```bash
 docker-compose down -v
 ```
-
-## Technology Stack
-
-- **Spring Boot**: 3.2.1
-- **Spring Data JPA**: Data persistence
-- **MySQL**: 8.0
-- **Maven**: Build tool
-- **Docker & Docker Compose**: Containerization
-- **Lombok**: Reduces boilerplate code
-- **Jakarta Validation**: Input validation
-- **Java**: 17 (source & target)
-
-## Project Features
-
-- ✅ UUID-based game identification
-- ✅ Publisher-based game filtering
-- ✅ Time tracking per game (date-hour mapping)
-- ✅ Input validation with custom error messages
-- ✅ Docker containerization for easy deployment
-- ✅ MySQL persistence with auto-DDL
-- ✅ CORS support for cross-origin requests
-- ✅ Fixed CVE-2023-22102 (MySQL Connector vulnerability)
-
-## Development Notes
-
-- Entities use Lombok `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor` for clean code
-- JPA `@ElementCollection` for storing timePlayed maps
-- Spring Data JPA `Repository` with custom `findByPublisherId()` method
-- Input validation using Jakarta Bean Validation annotations
-- Service layer for business logic separation
-- Controllers expose three main REST endpoints
-- MySQL uses `spring.jpa.hibernate.ddl-auto=update` for schema management
