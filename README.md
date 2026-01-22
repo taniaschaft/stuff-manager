@@ -64,7 +64,7 @@ docker-compose logs -f game-manager
 docker-compose down
 ```
 
-The API will be available at: `http://localhost:8080/game`
+The API will be available at: `http://localhost:8081/game`
 
 ### Local Development (without Docker)
 
@@ -98,7 +98,7 @@ mvn spring-boot:run
 
 ### Create a Game
 ```bash
-curl -X POST http://localhost:8080/game \
+curl -X POST http://localhost:8081/game \
   -H "Content-Type: application/json" \
   -d '{
     "id": "c01cede4-cd45-11eb-b8bc-0242ac130003",
@@ -130,12 +130,12 @@ curl -X POST http://localhost:8080/game \
 
 ### Get All Games
 ```bash
-curl http://localhost:8080/game
+curl http://localhost:8081/game
 ```
 
 ### Get Games by Publisher
 ```bash
-curl http://localhost:8080/game?publisherId=nintendo
+curl http://localhost:8081/game?publisherId=nintendo
 ```
 
 ## Docker Services
@@ -150,7 +150,7 @@ curl http://localhost:8080/game?publisherId=nintendo
 ### Game Manager API Container
 - **Image**: Built from Dockerfile (multi-stage Maven build)
 - **Container**: `game-manager`
-- **Port**: `8080`
+- **Port**: `8081` (mapped from internal port 8080)
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
 
