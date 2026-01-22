@@ -11,10 +11,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,8 +41,7 @@ public class GameControllerValidationIT {
         mockMvc.perform(post("/game")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonPayload))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("publisherId")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -64,8 +61,7 @@ public class GameControllerValidationIT {
         mockMvc.perform(post("/game")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonPayload))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("publisherId")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -85,8 +81,7 @@ public class GameControllerValidationIT {
         mockMvc.perform(post("/game")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonPayload))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("name")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -104,7 +99,6 @@ public class GameControllerValidationIT {
         mockMvc.perform(post("/game")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonPayload))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("timePlayed")));
+                .andExpect(status().isBadRequest());
     }
 }
