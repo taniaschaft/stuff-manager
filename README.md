@@ -1,6 +1,6 @@
 # Game Manager API
 
-Spring Boot 3.0+ REST API for Game Management with CRUD operations and MySQL integration.
+Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records.
 
 ## Project Structure
 
@@ -15,9 +15,9 @@ game-manager/
 │   ├── repository/
 │   │   └── GameRepository.java          # Data access layer
 │   └── model/
-│       └── Game.java                    # Entity model
+│       └── Game.java                    # Entity model (JPA)
 ├── src/main/resources/
-│   └── application.properties           # Configuration
+│   └── application.properties           # Database configuration
 ├── Dockerfile                           # Container build configuration
 ├── docker-compose.yml                   # Multi-container orchestration
 └── pom.xml                              # Maven dependencies
@@ -25,36 +25,46 @@ game-manager/
 
 ## API Endpoints
 
-### Games CRUD Operations
+### Game Operations
 
-- **GET /api/games** - Retrieve all games
-- **GET /api/games/{id}** - Retrieve a specific game by ID
-- **GET /api/games/genre/{genre}** - Retrieve games by genre
-- **GET /api/games/platform/{platform}** - Retrieve games by platform
-- **POST /api/games** - Create a new game
-- **PUT /api/games/{id}** - Update an existing game
-- **DELETE /api/games/{id}** - Delete a game
+1. **POST /game** - Create a new game
+   - **Required fields**: `publisherId`, `name`, `timePlayed`
+   - **Validation**: 
+     - `publisherId`: Non-empty string
+     - `name`: 3-20 characters
+     - `timePlayed`: Non-empty Map of dates to hours played
+
+2. **GET /game** - Retrieve all games
+   - Returns all games from the database
+
+3. **GET /game?publisherId={publisherId}** - Retrieve games by publisher
+   - Filter games by specific publisher ID
 
 ## Setup & Run
 
 ### Prerequisites
 
-- Docker & Docker Compose installed
+- Docker & Docker Compose
+- Java 17+ (for local development)
 - Maven 3.9.6+ (for local development)
-- Java 17+
 
 ### Build & Run with Docker Compose
 
 ```bash
-# Start all services
-docker compose up -d
+# Build Docker images
+docker-compose build
+
+# Start all services (MySQL + Game Manager API)
+docker-compose up -d
 
 # View logs
-docker compose logs -f
+docker-compose logs -f game-manager
 
 # Stop services
-docker compose down
+docker-compose down
 ```
+
+The API will be available at: `http://localhost:8080/game`
 
 ### Local Development (without Docker)
 
@@ -66,114 +76,151 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-**Note:** Requires MySQL running on localhost:3306
+**Note:** Requires MySQL running on localhost:3306 with the database `bootdb`
 
 ## Database Configuration
 
-**Default Credentials:**
-- Host: `mysql` (docker) or `localhost` (local)
+**Docker Environment:**
+- Host: `mysql` (internal docker network)
 - Database: `bootdb`
-- Username: `user`
+- User: `user`
 - Password: `password`
 - Root Password: `root`
+- Port: `3306`
+
+**Local Development:**
+- Host: `localhost`
+- Database: `bootdb`
+- User: `user`
+- Password: `password`
 
 ## Sample API Requests
 
 ### Create a Game
 ```bash
-curl -X POST http://localhost:8080/api/games \
+curl -X POST http://localhost:8080/game \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Elden Ring",
-    "description": "Fantasy action RPG",
-    "genre": "RPG",
-    "price": 59.99,
-    "platform": "PC",
-    "releaseYear": 2022
+    "id": "c01cede4-cd45-11eb-b8bc-0242ac130003",
+    "publisherId": "nintendo",
+    "name": "Mario",
+    "timePlayed": {
+      "2023-05-01": 10,
+      "2023-05-02": 2,
+      "2023-05-03": 3,
+      "2023-05-04": 4
+    }
   }'
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "id": "c01cede4-cd45-11eb-b8bc-0242ac130003",
+  "publisherId": "nintendo",
+  "name": "Mario",
+  "timePlayed": {
+    "2023-05-01": 10,
+    "2023-05-02": 2,
+    "2023-05-03": 3,
+    "2023-05-04": 4
+  }
+}
 ```
 
 ### Get All Games
 ```bash
-curl http://localhost:8080/api/games
+curl http://localhost:8080/game
 ```
 
-### Get Game by ID
+### Get Games by Publisher
 ```bash
-curl http://localhost:8080/api/games/1
-```
-
-### Update a Game
-```bash
-curl -X PUT http://localhost:8080/api/games/1 \
-  -H "Content-Type: application/json" \
-  -d '{"price": 49.99}'
-```
-
-### Delete a Game
-```bash
-curl -X DELETE http://localhost:8080/api/games/1
-```
-
-### Filter by Genre
-```bash
-curl http://localhost:8080/api/games/genre/RPG
+curl http://localhost:8080/game?publisherId=nintendo
 ```
 
 ## Docker Services
 
 ### MySQL Container
-- Image: `mysql:8.0`
-- Port: `3306`
-- Storage: Persistent volume `mysql_data`
+- **Image**: `mysql:8.0`
+- **Container**: `game-manager-mysql`
+- **Port**: `3306`
+- **Storage**: Persistent volume `mysql_data`
+- **Health Check**: Enabled with `mysqladmin ping`
 
 ### Game Manager API Container
-- Built from Dockerfile (multi-stage build)
-- Port: `8080`
-- Depends on MySQL health check
+- **Image**: Built from Dockerfile (multi-stage Maven build)
+- **Container**: `game-manager`
+- **Port**: `8080`
+- **Depends On**: MySQL (waits for health check)
+- **Network**: `inatel` bridge network
 
 ## Troubleshooting
 
 ### Check running containers
 ```bash
-docker compose ps
+docker-compose ps
 ```
 
 ### View container logs
 ```bash
-docker compose logs game-manager-api
-docker compose logs mysql
+# Game Manager API logs
+docker-compose logs -f game-manager
+
+# MySQL logs
+docker-compose logs -f mysql
+
+# All services
+docker-compose logs -f
 ```
 
 ### Access MySQL directly
 ```bash
-docker compose exec mysql mysql -u user -p bootdb
+docker-compose exec mysql mysql -u user -p bootdb
+```
+
+### Validate docker-compose.yml
+```bash
+docker-compose config
 ```
 
 ### Rebuild and restart
 ```bash
-docker compose up -d --build
+docker-compose up -d --build
 ```
 
-### Clean everything (remove volumes)
+### Clean everything (remove volumes and containers)
 ```bash
-docker compose down -v
+docker-compose down -v
 ```
 
 ## Technology Stack
 
-- **Spring Boot 3.2.1**
-- **Spring Data JPA**
-- **MySQL 8.0**
-- **Maven 3.9.6**
-- **Docker & Docker Compose**
-- **Lombok** (reduces boilerplate)
-- **Java 17**
+- **Spring Boot**: 3.2.1
+- **Spring Data JPA**: Data persistence
+- **MySQL**: 8.0
+- **Maven**: Build tool
+- **Docker & Docker Compose**: Containerization
+- **Lombok**: Reduces boilerplate code
+- **Jakarta Validation**: Input validation
+- **Java**: 17 (source & target)
+
+## Project Features
+
+- ✅ UUID-based game identification
+- ✅ Publisher-based game filtering
+- ✅ Time tracking per game (date-hour mapping)
+- ✅ Input validation with custom error messages
+- ✅ Docker containerization for easy deployment
+- ✅ MySQL persistence with auto-DDL
+- ✅ CORS support for cross-origin requests
+- ✅ Fixed CVE-2023-22102 (MySQL Connector vulnerability)
 
 ## Development Notes
 
-- Entities use Lombok annotations for cleaner code
-- JPA `@Repository` handles all database operations
-- Service layer contains business logic
-- Controllers expose REST endpoints with error handling
-- MySQL `ddl-auto=update` auto-creates/updates tables on startup
+- Entities use Lombok `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor` for clean code
+- JPA `@ElementCollection` for storing timePlayed maps
+- Spring Data JPA `Repository` with custom `findByPublisherId()` method
+- Input validation using Jakarta Bean Validation annotations
+- Service layer for business logic separation
+- Controllers expose three main REST endpoints
+- MySQL uses `spring.jpa.hibernate.ddl-auto=update` for schema management
