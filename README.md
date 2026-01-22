@@ -74,11 +74,114 @@ docker-compose down
 
 ### Local Development (without Docker)
 
-```bash
-# Install dependencies
-mvn clean install
+This section covers running the application locally for development and testing purposes. The application uses an in-memory H2 database for testing, so no external MySQL instance is required.
 
-# RSystem Architecture
+#### Prerequisites
+
+- **Java 17+** installed and available in your PATH
+- **Maven 3.9.6+** installed and available in your PATH
+
+#### Setup
+
+```bash
+# Clone the repository (if not already done)
+git clone <repository-url>
+cd game-manager
+
+# Install dependencies and build the project
+mvn clean install
+```
+
+#### Running Tests
+
+The project includes comprehensive unit and integration tests that use an in-memory H2 database, eliminating the need for MySQL:
+
+```bash
+# Run all tests
+mvn test
+
+# Run tests with verbose output
+mvn test -X
+
+# Run a specific test class
+mvn test -Dtest=GameValidationTest
+
+# Run tests and generate coverage report
+mvn clean test jacoco:report
+```
+
+**Test Configuration:**
+- Tests use H2 in-memory database (`jdbc:h2:mem:testdb`)
+- Database schema is automatically created and dropped for each test run
+- Test configuration file: `src/test/resources/application.properties`
+
+#### Running the Application Locally
+
+To run the application locally for development:
+
+```bash
+# Run the Spring Boot application
+mvn spring-boot:run
+```
+
+**Note:** Running the application locally without Docker will start it in development mode, but it will attempt to connect to a MySQL database (as configured in `src/main/resources/application.properties`). For development without MySQL, you have two options:
+
+**Option 1: Use in-memory H2 database for local development**
+1. Update `src/main/resources/application.properties`:
+```properties
+spring.datasource.url=jdbc:h2:mem:devdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+```
+2. Then run: `mvn spring-boot:run`
+
+**Option 2: Run MySQL separately**
+```bash
+# Start MySQL using Docker (without the full docker-compose)
+docker run -d \
+  --name game-manager-mysql \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=bootdb \
+  -e MYSQL_USER=user \
+  -e MYSQL_PASSWORD=password \
+  -p 3306:3306 \
+  mysql:8.0
+
+# Then run the application
+mvn spring-boot:run
+```
+
+#### Development Workflow
+
+1. **Make code changes**
+2. **Run tests to ensure nothing breaks:**
+   ```bash
+   mvn test
+   ```
+3. **Run the application locally:**
+   ```bash
+   mvn spring-boot:run
+   ```
+4. **Test API endpoints** (see [Sample API Requests](#sample-api-requests) section)
+5. **Commit and push changes**
+
+#### Build Artifacts
+
+After running `mvn clean install`, the built JAR file is located at:
+```
+target/game-manager-1.0.0.jar
+```
+
+You can also run the JAR directly:
+```bash
+java -jar target/game-manager-1.0.0.jar
+```
+
+### Docker Deployment
+
+#### System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -108,13 +211,16 @@ mvn clean install
 Game Manager:      Stores games, validates with Publisher Manager
 Publisher Manager: Validates publisher information
 MySQL:             Shared database for both services
-``ronment:**
-- Host: `mysql` (internal docker network)
-- Database: `bootdb`
-- User: `user`
-- Password: ``
-- Root Password: ``
-- Port: `3306`
+```
+
+#### Database Environment
+
+- **Host**: `mysql` (internal docker network)
+- **Database**: `bootdb`
+- **User**: `user`
+- **Password**: (empty)
+- **Root Password**: (empty)
+- **Port**: `3306`
 
 ## Sample API Requests
 
