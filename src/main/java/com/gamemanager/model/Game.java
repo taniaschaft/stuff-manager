@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.GenericGenerator;
 import java.util.Map;
 import java.util.Objects;
 
@@ -14,6 +15,9 @@ import java.util.Objects;
 public class Game {
 
     @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(columnDefinition = "VARCHAR(36)")
     private String id;
 
     @Column(nullable = false, length = 100)
@@ -30,6 +34,7 @@ public class Game {
     @MapKeyColumn(name = "play_date")
     @Column(name = "hours_played")
     @NotEmpty(message = "timePlayed cannot be empty")
+    @ValidGameHours
     private Map<String, Integer> timePlayed;
 
     // Getters and Setters
