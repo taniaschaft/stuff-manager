@@ -54,17 +54,23 @@ game-manager/
 # Build Docker images
 docker-compose build
 
-# Start all services (MySQL + Game Manager API)
+# Start all services (MySQL + Game Manager API + Publisher Manager)
 docker-compose up -d
 
 # View logs
+docker-compose logs -f
+
+# View specific service logs
 docker-compose logs -f game-manager
+docker-compose logs -f publisher-manager
 
 # Stop services
 docker-compose down
 ```
 
-The API will be available at: `http://localhost:8081/game`
+**Services available:**
+- Game Manager API: `http://localhost:8081/game`
+- Publisher Manager API: `http://localhost:8080` (internal network: `http://publisher-manager:8080`)
 
 ### Local Development (without Docker)
 
@@ -72,15 +78,37 @@ The API will be available at: `http://localhost:8081/game`
 # Install dependencies
 mvn clean install
 
-# Run the application
-mvn spring-boot:run
+# RSystem Architecture
+
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                    Docker Network: inatel                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
+│  │  Game Manager    │  │ Publisher Manager│                 │
+│  │  Port: 8081      │  │  Port: 8080      │                 │
+│  │ (Host: 8081)     │  │  (Host: 8080)    │                 │
+│  └──────────────────┘  └──────────────────┘                 │
+│         │                      │                             │
+│         └──────────┬───────────┘                             │
+│                    │                                         │
+│           Validates via internal                            │
+│            network connection                               │
+│                    │                                         │
+│         ┌──────────▼──────────┐                             │
+│         │      MySQL 8.0      │                             │
+│         │  Port: 3306         │                             │
+│         │  (Host: 3306)       │                             │
+│         │  Database: bootdb   │                             │
+│         └─────────────────────┘                             │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 
-**Note:** Requires MySQL running on localhost:3306 with the database `bootdb`
-
-## Database Configuration
-
-**Docker Environment:**
+Game Manager:      Stores games, validates with Publisher Manager
+Publisher Manager: Validates publisher information
+MySQL:             Shared database for both services
+``ronment:**
 - Host: `mysql` (internal docker network)
 - Database: `bootdb`
 - User: `user`
@@ -147,6 +175,31 @@ curl http://localhost:8081/game?publisherId=nintendo
 - **Port**: `8081`
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
+- **Function**: Manages games and validates publishers
+
+### Publisher Manager Container
+- **Image**: `adautomendes/publisher-manager:latest` (from Docker Hub)
+- **Container**: `publisher-manager`
+- **Port**: `8080`
+- **Depends On**: MySQL (waits for health check)
+- **Network**: `inatel` bridge network (accessible internally as `http://publisher-manager:8080`)
+- **Environment Variables**:
+  - `SERVER_HOST: 0.0.0.0`
+  - `SERVER_PORT: 8080`
+  - `MYSQL_HOST: mysql`
+  - `MYSQL_PORT: 3306`
+  - `SPRING_PROFILES_ACTIVE: prod`
+- **Function**: Validates publisher information for incoming game registrations
+
+## Integration: Game Manager with Publisher Manager
+
+When creating a game via `POST /game`, the Game Manager service:
+1. Receives game creation request with `publisherId`
+2. Validates the `publisherId` by calling Publisher Manager (`http://publisher-manager:8080`)
+3. If publisher is valid, saves the game to MySQL
+4. Returns the created game or validation error
+
+This ensures data consistency across both services.
 
 ## Technology Stack
 
@@ -196,11 +249,24 @@ docker-compose ps
 # Game Manager API logs
 docker-compose logs -f game-manager
 
+# Publisher Manager logs
+docker-compose logs -f publisher-manager
+
 # MySQL logs
 docker-compose logs -f mysql
 
 # All services
 docker-compose logs -f
+```
+
+### Check specific service status
+```bash
+docker-compose ps
+```
+
+### Test Publisher Manager connection (from game-manager container)
+```bash
+docker-compose exec game-manager curl http://publisher-manager:8080/health
 ```
 
 ### Access MySQL directly
