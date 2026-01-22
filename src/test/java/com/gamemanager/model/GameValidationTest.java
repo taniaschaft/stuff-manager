@@ -32,7 +32,11 @@ public class GameValidationTest {
         Map<String, Integer> timePlayed = new HashMap<>();
         timePlayed.put("2023-05-01", 5);
         
-        Game game = new Game("test-id", "nintendo", "Mario", timePlayed);
+        Game game = new Game();
+        game.setId("test-id");
+        game.setPublisherId("nintendo");
+        game.setName("Mario");
+        game.setTimePlayed(timePlayed);
         
         Set<ConstraintViolation<Game>> violations = validator.validate(game);
         
@@ -44,7 +48,11 @@ public class GameValidationTest {
         Map<String, Integer> timePlayed = new HashMap<>();
         timePlayed.put("2023-05-01", 5);
         
-        Game game = new Game("test-id", "", "Mario", timePlayed);
+        Game game = new Game();
+        game.setId("test-id");
+        game.setPublisherId("");
+        game.setName("Mario");
+        game.setTimePlayed(timePlayed);
         
         Set<ConstraintViolation<Game>> violations = validator.validate(game);
         
@@ -61,7 +69,11 @@ public class GameValidationTest {
         Map<String, Integer> timePlayed = new HashMap<>();
         timePlayed.put("2023-05-01", 5);
         
-        Game game = new Game("test-id", "   ", "Mario", timePlayed);
+        Game game = new Game();
+        game.setId("test-id");
+        game.setPublisherId("   ");
+        game.setName("Mario");
+        game.setTimePlayed(timePlayed);
         
         Set<ConstraintViolation<Game>> violations = validator.validate(game);
         
@@ -73,7 +85,11 @@ public class GameValidationTest {
         Map<String, Integer> timePlayed = new HashMap<>();
         timePlayed.put("2023-05-01", 5);
         
-        Game game = new Game("test-id", "nintendo", "ab", timePlayed);
+        Game game = new Game();
+        game.setId("test-id");
+        game.setPublisherId("nintendo");
+        game.setName("ab");
+        game.setTimePlayed(timePlayed);
         
         Set<ConstraintViolation<Game>> violations = validator.validate(game);
         
@@ -88,7 +104,11 @@ public class GameValidationTest {
     public void testGameWithEmptyTimePlayed_ShouldFailValidation() {
         Map<String, Integer> timePlayed = new HashMap<>();
         
-        Game game = new Game("test-id", "nintendo", "Mario", timePlayed);
+        Game game = new Game();
+        game.setId("test-id");
+        game.setPublisherId("nintendo");
+        game.setName("Mario");
+        game.setTimePlayed(timePlayed);
         
         Set<ConstraintViolation<Game>> violations = validator.validate(game);
         
