@@ -4,10 +4,10 @@ services:
     image: mysql:8.0
     container_name: game-manager-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bootdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
       - "33060:33060"
@@ -31,13 +31,13 @@ services:
     networks:
       - inatel
     environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      PUBLISHER_MANAGER_URL: ${PUBLISHER_MANAGER_URL}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bootdb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      PUBLISHER_MANAGER_URL: http://publisher-manager:8080/publisher
 
   publisher-manager:
-    image: adautomendes/publisher-manager:${PUBLISHER_MANAGER_VERSION}
+    image: adautomendes/publisher-manager
     container_name: publisher-manager
     platform: linux/amd64
     ports:
@@ -47,15 +47,18 @@ services:
         condition: service_healthy
     networks:
       - inatel
-    environment:
-      SERVER_HOST: ${PUBLISHER_SERVER_HOST}
-      SERVER_PORT: ${PUBLISHER_SERVER_PORT}
-      MYSQL_HOST: ${PUBLISHER_MYSQL_HOST}
-      MYSQL_PORT: ${PUBLISHER_MYSQL_PORT}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    environment: 
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bootdb?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQL8Dialect
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bootdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
 
 volumes:
   mysql_data:
