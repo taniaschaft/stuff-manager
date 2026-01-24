@@ -9,7 +9,8 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "${MYSQL_PORT}:3306"
+      - "3306:3306"
+      - "33060:33060"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -23,7 +24,7 @@ services:
     build: .
     container_name: game-manager
     ports:
-      - "${GAME_MANAGER_PORT}:8081"
+      - "8081:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -40,7 +41,7 @@ services:
     container_name: publisher-manager
     platform: linux/amd64
     ports:
-      - "${PUBLISHER_MANAGER_PORT}:8080"
+      - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
