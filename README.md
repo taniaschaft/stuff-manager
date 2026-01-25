@@ -8,20 +8,35 @@ Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track gam
 game-manager/
 ├── src/main/java/com/gamemanager/
 │   ├── GameManagerApplication.java      # Main application class
+│   ├── client/                          # External service clients (unused - see note below)
+│   │   └── PublisherClient.java         # REST client for publisher validation
+│   ├── config/
+│   │   └── RestTemplateConfig.java      # HTTP client configuration
 │   ├── controller/
-│   │   └── GameController.java          # REST API endpoints
-│   ├── service/
-│   │   └── GameService.java             # Business logic
+│   │   ├── GameController.java          # REST API endpoints
+│   │   └── GlobalExceptionHandler.java  # Centralized exception handling
+│   ├── dto/
+│   │   └── PublisherDTO.java            # Data transfer object for publisher
+│   ├── model/
+│   │   ├── Game.java                    # Game entity (JPA)
+│   │   ├── GameHoursValidator.java      # Custom validator implementation
+│   │   └── ValidGameHours.java          # Custom validation annotation
 │   ├── repository/
 │   │   └── GameRepository.java          # Data access layer
-│   └── model/
-│       └── Game.java                    # Entity model (JPA)
+│   └── service/
+│       ├── GameService.java             # Business logic
+│       ├── PublisherService.java        # Publisher validation service (unused)
+│       └── InvalidPublisherException.java  # Custom exception
 ├── src/main/resources/
-│   └── application.properties           # Database configuration
+│   ├── application.properties           # Production database configuration
+│   └── application-dev.properties       # Development H2 configuration
+├── src/test/                            # Test directory
 ├── Dockerfile                           # Container build configuration
 ├── docker-compose.yml                   # Multi-container orchestration
 └── pom.xml                              # Maven dependencies
 ```
+
+**Note on `client/` directory:** This directory was created for integration with an external publisher-manager REST service. However, the service was not integrated into this project due to compilation failures and multiple security vulnerabilities in its available Docker Hub image.
 
 ## API Endpoints
 
@@ -45,32 +60,26 @@ game-manager/
 ### Prerequisites
 
 - Docker & Docker Compose
-- Java 17+ (for local development)
+- Java 21+ (for local development)
 - Maven 3.9.6+ (for local development)
 
-### Build & Run with Docker Compose
+### Build & Run with Docker Compose (suggested commands)
 
 ```bash
-# Build Docker images
-docker-compose build
-
-# Start all services (MySQL + Game Manager API + Publisher Manager)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
+# Build Docker images and run detached
+docker-compose up -d --build 
 
 # View specific service logs
 docker-compose logs -f game-manager
-docker-compose logs -f publisher-manager
+docker-compose logs -f mysql-db
 
 # Stop services
-docker-compose down
+docker-compose down -v
 ```
 
 **Services available:**
-- Game Manager API: `http://localhost:8081/game`
-- Publisher Manager API: `http://localhost:8080` (internal network: `http://publisher-manager:8080`)
+- Game Manager API: `http://localhost:8080/game`
+- Publisher Manager API: 
 
 ### Local Development (without Docker)
 
@@ -78,7 +87,7 @@ This section covers running the application locally for development and testing 
 
 #### Prerequisites
 
-- **Java 17+** installed and available in your PATH
+- **Java 21+** installed and available in your PATH
 - **Maven 3.9.6+** installed and available in your PATH
 
 #### Setup
@@ -88,13 +97,14 @@ This section covers running the application locally for development and testing 
 git clone <repository-url>
 cd game-manager
 
-# Install dependencies and build the project
-mvn clean install
-```
-
 #### Running Tests
+The project includes unit and integration tests that use an in-memory H2 database.
 
-The project includes comprehensive unit and integration tests that use an in-memory H2 database, eliminating the need for MySQL:
+**Test Configuration:**
+
+- Tests use H2 in-memory database (`jdbc:h2:mem:testdb`)
+- Database schema is automatically created and dropped for each test run
+- Test configuration file: `src/test/resources/application.properties`
 
 ```bash
 # Run all tests
@@ -110,16 +120,15 @@ mvn test -Dtest=GameValidationTest
 mvn clean test jacoco:report
 ```
 
-**Test Configuration:**
-- Tests use H2 in-memory database (`jdbc:h2:mem:testdb`)
-- Database schema is automatically created and dropped for each test run
-- Test configuration file: `src/test/resources/application.properties`
-
 #### Running the Application Locally
 
-To run the application locally for development:
+To run the application locally for development (not recommended, use the docker service instead).
+
+Set the H2 as the spring.datasource.url driver (more instructions to follow) and run bellow:
 
 ```bash
+# Install dependencies and build the project
+mvn clean install
 # Run the Spring Boot application
 mvn spring-boot:run
 ```
@@ -190,8 +199,8 @@ java -jar target/game-manager-1.0.0.jar
 │                                                              │
 │  ┌──────────────────┐  ┌──────────────────┐                 │
 │  │  Game Manager    │  │ Publisher Manager│                 │
-│  │  Port: 8081      │  │  Port: 8080      │                 │
-│  │ (Host: 8081)     │  │  (Host: 8080)    │                 │
+│  │  Port: 8080      │  │  Port: 8081      │                 │
+│  │ (Host: 8080)     │  │  (Host: 8081)    │                 │
 │  └──────────────────┘  └──────────────────┘                 │
 │         │                      │                             │
 │         └──────────┬───────────┘                             │
