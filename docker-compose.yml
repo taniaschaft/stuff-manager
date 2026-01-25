@@ -2,15 +2,18 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: game-manager-mysql
+    container_name: mysql-db
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: bootdb
       MYSQL_USER: user
       MYSQL_PASSWORD: password
-    ports:
-      - "3306:3306"
-      - "33060:33060"
+    
+    # Don`t need since won`t be accessing the db outside the docker network
+    #ports:
+    #  - "3306:3306"
+    # Without it, all your database data would be lost when the container stops.
+    #TODO- remove before final version is pushed
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -24,7 +27,7 @@ services:
     build: .
     container_name: game-manager
     ports:
-      - "8081:8080"
+      - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -34,31 +37,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bootdb
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
-      PUBLISHER_MANAGER_URL: http://publisher-manager:8080/publisher
-
-  publisher-manager:
-    image: adautomendes/publisher-manager
-    container_name: publisher-manager
-    platform: linux/amd64
-    ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - inatel
-    environment: 
-      SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bootdb?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
-      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQL8Dialect
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: bootdb
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
 
 volumes:
   mysql_data:

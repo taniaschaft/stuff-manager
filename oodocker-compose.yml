@@ -34,28 +34,6 @@ services:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      PUBLISHER_MANAGER_URL: ${PUBLISHER_MANAGER_URL}
-
-  publisher-manager:
-    image: adautomendes/publisher-manager:${PUBLISHER_MANAGER_VERSION}
-    container_name: publisher-manager
-    platform: linux/amd64
-    ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - inatel
-    environment:
-      SERVER_HOST: ${PUBLISHER_SERVER_HOST}
-      SERVER_PORT: ${PUBLISHER_SERVER_PORT}
-      MYSQL_HOST: ${PUBLISHER_MYSQL_HOST}
-      MYSQL_PORT: ${PUBLISHER_MYSQL_PORT}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
 
 volumes:
   mysql_data:

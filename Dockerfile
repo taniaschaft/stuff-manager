@@ -11,6 +11,4 @@ FROM eclipse-temurin:21.0.9_10-jre-jammy
 WORKDIR /app
 COPY --from=builder /app/target/game-manager-1.0.0.jar app.jar
 EXPOSE 8080
-#-p 8080:80 <-
-# publisher-manager exposes on 8080 so we need to map this to 8081 when calling game manager container
 ENTRYPOINT ["java", "-jar", "app.jar"]
