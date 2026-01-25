@@ -265,7 +265,16 @@ curl -X POST http://localhost:8080/game \
 ```
 Another example (without publisher):
 ```bash
- curl -s -X POST http://localhost:8080/game -H "Content-Type: application/json" -d '{"id":"","publisherId":"","name":"Super Mario","timePlayed":{"2023-05-01":10}}
+curl -s -X POST http://localhost:8080/game \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "",
+    "publisherId": "",
+    "name": "Super Mario",
+    "timePlayed": {
+      "2023-05-01": 10
+    }
+  }'
  ```
 **Unsucessful Response (400 Bad request):**
 ```json
