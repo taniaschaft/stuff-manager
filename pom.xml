@@ -69,6 +69,12 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Spring Boot Docker Compose Support -->
+        <dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-docker-compose</artifactId>
+		    <optional>true</optional>
+	    </dependency>
     </dependencies>
     
     <build>
