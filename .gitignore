@@ -38,3 +38,4 @@ replay_pid*
 # Maven target directory
 target/
 .vscode/*
+text_ for compose yaml

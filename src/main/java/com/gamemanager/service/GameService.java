@@ -16,22 +16,9 @@ public class GameService {
     @Autowired
     private GameRepository gameRepository;
 
-    @Autowired
-    private PublisherService publisherService;
-
-    // Create with publisher validation
+    // Create game without publisher validation
     public Game createGame(Game game) {
         logger.info("Creating game with publisherId: {}", game.getPublisherId());
-        
-        // Validate publisherId exists
-        if (!publisherService.validatePublisherId(game.getPublisherId())) {
-            logger.warn("Invalid publisherId: {}", game.getPublisherId());
-            throw new InvalidPublisherException(
-                "Publisher '" + game.getPublisherId() + "' is not registered in the system"
-            );
-        }
-        
-        logger.info("Publisher validation passed for: {}", game.getPublisherId());
         return gameRepository.save(game);
     }
 
