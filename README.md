@@ -225,11 +225,11 @@ MySQL:             Shared database for both services
 ## Sample API Requests
 
 ### Create a Game
+
 ```bash
-curl -X POST http://localhost:8081/game \
+curl -X POST http://localhost:8080/game \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "c01cede4-cd45-11eb-b8bc-0242ac130003",
     "publisherId": "nintendo",
     "name": "Mario",
     "timePlayed": {
@@ -240,11 +240,10 @@ curl -X POST http://localhost:8081/game \
     }
   }'
 ```
-
 **Success Response (201 Created):**
 ```json
 {
-  "id": "c01cede4-cd45-11eb-b8bc-0242ac130003",
+  "id": "d167b4a1-4748-4eda-807c-828078701257",
   "publisherId": "nintendo",
   "name": "Mario",
   "timePlayed": {
@@ -255,33 +254,45 @@ curl -X POST http://localhost:8081/game \
   }
 }
 ```
+Another example (without publisher):
+```bash
+ curl -s -X POST http://localhost:8080/game -H "Content-Type: application/json" -d '{"id":"","publisherId":"","name":"Super Mario","timePlayed":{"2023-05-01":10}}
+ ```
+**Unsucessful Response (400 Bad request):**
+```json
+{
+  "publisherId": "publisherId cannot be empty"
+}
+``` 
+
 
 ### Get All Games
 ```bash
-curl http://localhost:8081/game
+curl http://localhost:8080/game
 ```
 
 ### Get Games by Publisher
 ```bash
-curl http://localhost:8081/game?publisherId=nintendo
+curl http://localhost:8080/game?publisherId=nintendo
 ```
 
 ## Docker Services
 
 ### MySQL Container
 - **Image**: `mysql:8.0`
-- **Container**: `game-manager-mysql`
-- **Port**: `3306`
+- **Container**: `mysql-db`
+- **Port**: `3306` (not exposed to localhost, only to the game-service so I removed from docker-compose)
 - **Storage**: Persistent volume `mysql_data`
 - **Health Check**: Enabled with `mysqladmin ping`
 
 ### Game Manager API Container
 - **Image**: Built from Dockerfile (multi-stage Maven build)
 - **Container**: `game-manager`
-- **Port**: `8081`
+- **Port**: `8080`
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
-- **Function**: Manages games and validates publishers
+- **Function**: Manages game sessions with field restrictions and consistency. (soon) validates publishers
+<!--
 
 ### Publisher Manager Container
 - **Image**: `adautomendes/publisher-manager:latest` (from Docker Hub)
@@ -297,7 +308,7 @@ curl http://localhost:8081/game?publisherId=nintendo
   - `SPRING_PROFILES_ACTIVE: prod`
 - **Function**: Validates publisher information for incoming game registrations
 
-## Integration: Game Manager with Publisher Manager
+## Integration: Game Manager with New Publisher Manager (homegrown REST service)
 
 When creating a game via `POST /game`, the Game Manager service:
 1. Receives game creation request with `publisherId`
@@ -306,6 +317,7 @@ When creating a game via `POST /game`, the Game Manager service:
 4. Returns the created game or validation error
 
 This ensures data consistency across both services.
+-->
 
 ## Technology Stack
 
@@ -316,7 +328,7 @@ This ensures data consistency across both services.
 - **Docker & Docker Compose**: Containerization
 - **Lombok**: Reduces boilerplate code
 - **Jakarta Validation**: Input validation
-- **Java**: 17 (source & target)
+- **Java**: 21+ (source & target)
 
 ## Project Features
 
@@ -348,41 +360,6 @@ This ensures data consistency across both services.
 ### Check running containers
 ```bash
 docker-compose ps
-```
-
-### View container logs
-```bash
-# Game Manager API logs
-docker-compose logs -f game-manager
-
-# Publisher Manager logs
-docker-compose logs -f publisher-manager
-
-# MySQL logs
-docker-compose logs -f mysql
-
-# All services
-docker-compose logs -f
-```
-
-### Check specific service status
-```bash
-docker-compose ps
-```
-
-### Test Publisher Manager connection (from game-manager container)
-```bash
-docker-compose exec game-manager curl http://publisher-manager:8080/health
-```
-
-### Access MySQL directly
-```bash
-docker-compose exec mysql mysql -u user -p bootdb
-```
-
-### Validate docker-compose.yml
-```bash
-docker-compose config
 ```
 
 ### Rebuild and restart
