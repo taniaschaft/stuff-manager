@@ -10,8 +10,8 @@ services:
       MYSQL_PASSWORD: password
     
     # Don`t need since won`t be accessing the db outside the docker network
-    #ports:
-    #  - "3306:3306"
+    ports:
+      - "3306:3306"
     # Without it, all your database data would be lost when the container stops.
     #TODO- remove before final version is pushed
     volumes:
