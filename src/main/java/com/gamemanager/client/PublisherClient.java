@@ -23,7 +23,7 @@ public class PublisherClient {
         // For local dev: http://localhost:8080
         this.publisherManagerUrl = System.getenv("PUBLISHER_MANAGER_URL") != null 
             ? System.getenv("PUBLISHER_MANAGER_URL") 
-            : "http://localhost:8080";
+            : "http://localhost:8081/publisher";
     }
 
     /**
@@ -31,9 +31,9 @@ public class PublisherClient {
      */
     public List<PublisherDTO> getAllPublishers() {
         try {
-            logger.info("Fetching publishers from: {}/publisher", publisherManagerUrl);
+            logger.info("Fetching publishers from: {}/all", publisherManagerUrl);
             PublisherDTO[] publishers = restTemplate.getForObject(
-                publisherManagerUrl + "/publisher",
+                publisherManagerUrl + "/all",
                 PublisherDTO[].class
             );
             logger.info("Successfully fetched {} publishers", publishers != null ? publishers.length : 0);
@@ -45,14 +45,14 @@ public class PublisherClient {
     }
 
     /**
-     * Check if a publisher exists by ID
+     * Check if a publisher exists by name
      */
     public boolean publisherExists(String publisherId) {
         try {
             logger.debug("Checking if publisher exists: {}", publisherId);
             List<PublisherDTO> publishers = getAllPublishers();
             boolean exists = publishers.stream()
-                .anyMatch(p -> p.getId().equalsIgnoreCase(publisherId));
+                .anyMatch(p -> p.getName().equalsIgnoreCase(publisherId));
             logger.debug("Publisher '{}' exists: {}", publisherId, exists);
             return exists;
         } catch (Exception e) {
