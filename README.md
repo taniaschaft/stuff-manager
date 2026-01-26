@@ -2,6 +2,14 @@
 
 Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records.
 
+<!--
+
+To test REST connection, I created a small microservice which registers user and email but we will be creatively using it as a replace for publisher-manager over here.
+
+docker pull taniaschaft/accessing-data-mysql:latest 
+
+
+-->
 ## Project Structure
 
 ```
@@ -79,7 +87,7 @@ docker-compose down -v
 
 **Services available:**
 - Game Manager API: `http://localhost:8080/game`
-- Publisher Manager API: 
+- Publisher Manager API:  available at DockerHub taniaschaft/accessing-data-mysql:latest  
 
 ### Local Development (without Docker)
 
@@ -191,6 +199,14 @@ java -jar target/game-manager-1.0.0.jar
 ### Docker Deployment
 
 #### System Architecture
+<!--
+
+To test REST connection, I created a small microservice which registers user and email but we will be creatively using it as a replace for publisher-manager over here.
+
+docker pull taniaschaft/accessing-data-mysql:latest 
+
+
+-->
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -198,7 +214,7 @@ java -jar target/game-manager-1.0.0.jar
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐                 │
-│  │  Game Manager    │  │ Publisher Manager│                 │
+│  │  Game Manager    │  │ ADM API.         |                 │
 │  │  Port: 8080      │  │  Port: 8081      │                 │
 │  │ (Host: 8080)     │  │  (Host: 8081)    │                 │
 │  └──────────────────┘  └──────────────────┘                 │
@@ -263,7 +279,7 @@ curl -X POST http://localhost:8080/game \
   }
 }
 ```
-Another example (without publisher):
+Another example (without publisherId):
 ```bash
 curl -s -X POST http://localhost:8080/game \
   -H "Content-Type: application/json" \
@@ -311,26 +327,26 @@ curl http://localhost:8080/game?publisherId=nintendo
 - **Network**: `inatel` bridge network
 - **Function**: Manages game sessions with field restrictions and consistency. (soon) validates publishers
 <!--
-
-### Publisher Manager Container
-- **Image**: `adautomendes/publisher-manager:latest` (from Docker Hub)
-- **Container**: `publisher-manager`
-- **Port**: `8080`
+-->
+### Publisher Manager Container -> Acessing Data MySQL service 
+- **Image**: `taniaschaft/acessing-data-mysql:latest` (from Docker Hub)
+- **Container**: `spring-app`
+- **Port**: `8081`
 - **Depends On**: MySQL (waits for health check)
-- **Network**: `inatel` bridge network (accessible internally as `http://publisher-manager:8080`)
+- **Network**: `inatel` bridge network (accessible internally as `http://localhost:8081/publisher/`)
 - **Environment Variables**:
   - `SERVER_HOST: 0.0.0.0`
-  - `SERVER_PORT: 8080`
+  - `SERVER_PORT: 8081`
   - `MYSQL_HOST: mysql`
   - `MYSQL_PORT: 3306`
-  - `SPRING_PROFILES_ACTIVE: prod`
+  - `SPRING_PROFILES_ACTIVE: dev`
 - **Function**: Validates publisher information for incoming game registrations
 
 ## Integration: Game Manager with New Publisher Manager (homegrown REST service)
 
 When creating a game via `POST /game`, the Game Manager service:
 1. Receives game creation request with `publisherId`
-2. Validates the `publisherId` by calling Publisher Manager (`http://publisher-manager:8080`)
+2. Validates the `publisherId` by calling "Acessing Data Mysql˜ (`http://localhost:8081/publisher/`)
 3. If publisher is valid, saves the game to MySQL
 4. Returns the created game or validation error
 
