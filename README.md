@@ -36,7 +36,26 @@ game-manager/
 └── pom.xml                              # Maven dependencies
 ```
 
-**Note on `client/` directory:** This directory was created for integration with an external publisher-manager REST service. However, the service was not integrated into this project due to compilation failures and multiple security vulnerabilities in its available Docker Hub image.
+**Note on `client/` directory:** This directory was created for integration with an external publisher-manager REST service. However, the service was not integrated into this project due to compilation failures and multiple security vulnerabilities in its available Docker Hub image. 
+
+Therefore, the service will be connected to a REST service created by myself and published publicly as the other service mentioend above. The service is a simple REST application that shares the DB with this project (like publisher manager would) to record user and email. It is available on:
+
+https://hub.docker.com/repository/docker/taniaschaft/accessing-data-mysql
+
+and can be locally run with:
+
+docker run -p 8081:8081
+-e SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/bootdb
+-e SPRING_DATASOURCE_USERNAME=user
+-e SPRING_DATASOURCE_PASSWORD=password
+taniaschaft/accessing-data-mysql:latest
+
+In the execution of this project, you will see the following containers up and running in your machine:
+
+<img width="2024" height="686" alt="image" src="https://github.com/user-attachments/assets/972c25c5-8083-4a61-92bf-bdf5f4ad8870" />
+
+
+-----
 
 ## API Endpoints
 
