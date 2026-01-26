@@ -72,8 +72,8 @@ In the execution of this project, you need only to clone this repository and bui
 ```bash
 docker-compose up -d --build 
 ```
+<img width="1001" height="160" alt="image" src="https://github.com/user-attachments/assets/243f9de8-a172-4c3e-aae3-b76a741e1136" />
 
-<img width="1001" height="160" alt="image" src="https://github.com/user-attachments/assets/5d340ded-ccfd-4c8c-990a-c5481fa6f3cc" />
 or using the Docker Desktop - 
 <img width="2024" height="686" alt="image" src="https://github.com/user-attachments/assets/972c25c5-8083-4a61-92bf-bdf5f4ad8870" />
 
