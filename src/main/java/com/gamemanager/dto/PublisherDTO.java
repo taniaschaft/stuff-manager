@@ -1,22 +1,24 @@
 package com.gamemanager.dto;
 
 public class PublisherDTO {
-    private String id;
+    private Integer id;
     private String name;
+    private String email;
 
     public PublisherDTO() {
     }
 
-    public PublisherDTO(String id, String name) {
+    public PublisherDTO(Integer id, String name, String email) {
         this.id = id;
         this.name = name;
+        this.email = email;
     }
 
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -28,11 +30,20 @@ public class PublisherDTO {
         this.name = name;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     @Override
     public String toString() {
         return "PublisherDTO{" +
-                "id='" + id + '\'' +
+                "id=" + id +
                 ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
                 '}';
     }
 }
