@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.gamemanager.dto.GameResponse;
+
 @RestController
 @RequestMapping("/game")
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -34,12 +36,25 @@ public class GameController {
      * GET http://<game-manager-host>:<game-manager-port>/game
      */
     @GetMapping
-    public ResponseEntity<List<Game>> getGames(@RequestParam(required = false) String publisherId) {
+    //public ResponseEntity<List<Game>> getGames(@RequestParam(required = false) String publisherId) {
+    public ResponseEntity<GameResponse> getGames(@RequestParam(required = false) String publisherId) {
+    List<Game> games;
+        String message;
+
         if (publisherId != null && !publisherId.isEmpty()) {
-            List<Game> games = gameService.getGamesByPublisherId(publisherId);
-            return ResponseEntity.ok(games);
+            //List<Game> games = gameService.getGamesByPublisherId(publisherId);
+            //return ResponseEntity.ok(games);
+            games = gameService.getGamesByPublisherId(publisherId);
+            message = "Games retrieved for publisher: "+ publisherId;
+        } else {
+            games = gameService.getAllGames();
+            message = "All games retrieved successfully";
         }
-        List<Game> games = gameService.getAllGames();
-        return ResponseEntity.ok(games);
+
+        GameResponse response = new GameResponse(games, message);
+        return ResponseEntity.ok(response);
+
+        //List<Game> games = gameService.getAllGames();
+        //return ResponseEntity.ok(games);
     }
 }
