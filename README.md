@@ -50,9 +50,19 @@ docker run -p 8081:8081
 -e SPRING_DATASOURCE_PASSWORD=password
 taniaschaft/accessing-data-mysql:latest
 
+You can test the applicatiomn endpoints using the endpoints bellow:
+
+```bash
+curl http://localhost:8081/publisher/add -d name=abcgames -d email=abcgamesCEO@abcgames.com
+curl http://localhost:8081/publisher/add -d name=2Kgames -d email=2kgamesCEO@2kgames.com
+curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com 
+curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendoCEO@nintendo.com 
+```
+
 In the execution of this project, you will see the following containers up and running in your machine:
 
 <img width="2024" height="686" alt="image" src="https://github.com/user-attachments/assets/972c25c5-8083-4a61-92bf-bdf5f4ad8870" />
+
 
 
 -----
