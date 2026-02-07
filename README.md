@@ -1,22 +1,22 @@
 # Game Manager API
 
-Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records.
+Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records with real-time publisher validation.
 
-<!--
+## Table of Contents
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [API Endpoints](#api-endpoints)
+- [Setup & Run](#setup--run)
+- [Docker Deployment](#docker-deployment)
+- [Sample API Requests](#sample-api-requests)
+- [Technology Stack](#technology-stack)
+- [Features](#features)
+- [Troubleshooting](#troubleshooting)
 
-To test REST connection, I created a small microservice which registers user and email but we will be creatively using it as a replace for publisher-manager over here.
-
-docker pull taniaschaft/accessing-data-mysql:latest 
-
-
--->
 ## Project Structure
 
 ```
 game-manager/
-├── src/main/java/com/gamemanager/
-│   ├── GameManagerApplication.java      # Main application class
-│   ├── client/                          # External service clients (unused - see note below)
 │   │   └── PublisherClient.java         # REST client for publisher validation
 │   ├── config/
 │   │   └── RestTemplateConfig.java      # HTTP client configuration
@@ -24,7 +24,8 @@ game-manager/
 │   │   ├── GameController.java          # REST API endpoints
 │   │   └── GlobalExceptionHandler.java  # Centralized exception handling
 │   ├── dto/
-│   │   └── PublisherDTO.java            # Data transfer object for publisher
+│   │   ├── GameResponse.java            # Game response DTO
+│   │   └── PublisherDTO.java            # Publisher data transfer object
 │   ├── model/
 │   │   ├── Game.java                    # Game entity (JPA)
 │   │   ├── GameHoursValidator.java      # Custom validator implementation
@@ -33,7 +34,7 @@ game-manager/
 │   │   └── GameRepository.java          # Data access layer
 │   └── service/
 │       ├── GameService.java             # Business logic
-│       ├── PublisherService.java        # Publisher validation service (unused)
+│       ├── PublisherService.java        # Real-time publisher validation
 │       └── InvalidPublisherException.java  # Custom exception
 ├── src/main/resources/
 │   ├── application.properties           # Production database configuration
@@ -44,38 +45,37 @@ game-manager/
 └── pom.xml                              # Maven dependencies
 ```
 
-**Note on `client/` directory:** This directory was created for integration with an external publisher-manager REST service. However, the service was not integrated into this project due to compilation failures and multiple security vulnerabilities in its available Docker Hub image. 
-
-Therefore, the service will be connected to a REST service created by myself and published publicly as the other service mentioend above. The service is a simple REST application that shares the DB with this project (like publisher manager would) to record user and email. It is available on:
-
-https://hub.docker.com/repository/docker/taniaschaft/accessing-data-mysql
-
-and can be locally run with:
-
-docker run -p 8081:8081
--e SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/bootdb
--e SPRING_DATASOURCE_USERNAME=user
--e SPRING_DATASOURCE_PASSWORD=password
-taniaschaft/accessing-data-mysql:latest
-
-You can test the applicatiomn endpoints using the endpoints bellow:
+## Quick Start
 
 ```bash
-curl http://localhost:8081/publisher/add -d name=abcgames -d email=abcgamesCEO@abcgames.com
-curl http://localhost:8081/publisher/add -d name=2Kgames -d email=2kgamesCEO@2kgames.com
-curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com 
-curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendoCEO@nintendo.com 
+# Clone the repository
+git clone <repository-url>
+cd game-manager
+
+# Start all services with Docker Compose
+docker-compose up -d --build
+
+# Add publishers to the publisher-manager service
+curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendo@nintendo.com
+curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com
+
+# Create a game
+curl -X POST http://localhost:8080/game \
+  -H "Content-Type: application/json" \
+  -d '{"publisherId":"nintendo","name":"Mario","timePlayed":{"2023-05-01":10}}'
 ```
 
-In the execution of this project, you need to git clone this repo and 
-$ docker-compose up -d --build 
-which will display something similar to:
+## Publisher Manager Integration
 
+The Game Manager validates publishers using an external **Publisher Manager** service available at:
+- **Docker Hub**: `taniaschaft/accessing-data-mysql:latest`
+- **Internal URL**: `http://localhost:8081/publisher/`
+- **Validation**: Real-time (no caching) - every game creation makes a fresh API call
 
-<img width="1010" height="483" alt="image" src="https://github.com/user-attachments/assets/99a39ee7-e540-4b85-9a08-fc5482130bb6" />
-or using the Docker Desktop -
-<img width="2024" height="686" alt="image" src="https://github.com/user-attachments/assets/972c25c5-8083-4a61-92bf-bdf5f4ad8870" />
-
+### Publisher Service Behavior
+- **No Caching**: Each POST request validates the publisher by calling the publisher-manager service
+- **Real-time Validation**: Ensures up-to-date publisher information
+- **Shared Database**: Both services use the same MySQL database for consistency
 
 
 -----
@@ -105,13 +105,13 @@ or using the Docker Desktop -
 - Java 21+ (for local development)
 - Maven 3.9.6+ (for local development)
 
-### Build & Run with Docker Compose (suggested commands)
+### Build & Run with Docker Compose
 
 ```bash
-# Build Docker images and run detached
+# Build and start all services
 docker-compose up -d --build 
 
-# View specific service logs
+# View logs
 docker-compose logs -f game-manager
 docker-compose logs -f mysql-db
 
@@ -119,9 +119,10 @@ docker-compose logs -f mysql-db
 docker-compose down -v
 ```
 
-**Services available:**
+**Services Started:**
 - Game Manager API: `http://localhost:8080/game`
-- Publisher Manager API:  available at DockerHub taniaschaft/accessing-data-mysql:latest  
+- Publisher Manager API: `http://localhost:8081/publisher/`
+- MySQL Database: Internal network only  
 
 ### Local Development (without Docker)
 
@@ -359,36 +360,51 @@ curl http://localhost:8080/game?publisherId=nintendo
 - **Port**: `8080`
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
-- **Function**: Manages game sessions with field restrictions and consistency. (soon) validates publishers
-<!--
--->
-### Publisher Manager Container -> Acessing Data MySQL service 
-- **Image**: `taniaschaft/acessing-data-mysql:latest` (from Docker Hub)
+- **Function**: Manages game sessions with real-time publisher validation
+
+### Publisher Manager Container
+- **Image**: `taniaschaft/accessing-data-mysql:latest` (from Docker Hub)
 - **Container**: `spring-app`
 - **Port**: `8081`
 - **Depends On**: MySQL (waits for health check)
-- **Network**: `inatel` bridge network (accessible internally as `http://localhost:8081/publisher/`)
+- **Network**: `inatel` bridge network
+- **Internal URL**: `http://localhost:8081/publisher/`
 - **Environment Variables**:
   - `SERVER_HOST: 0.0.0.0`
   - `SERVER_PORT: 8081`
   - `MYSQL_HOST: mysql`
   - `MYSQL_PORT: 3306`
   - `SPRING_PROFILES_ACTIVE: dev`
-- **Function**: Validates publisher information for incoming game registrations
+- **Function**: Validates publisher information for game registrations
+
+### Sample Publisher Commands
+```bash
+# Add publishers to the system
+curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendo@nintendo.com
+curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com
+curl http://localhost:8081/publisher/add -d name=abcgames -d email=abcgames@abcgames.com
+curl http://localhost:8081/publisher/add -d name=2kgames -d email=2kgames@2kgames.com
+
+# Get all publishers
+curl http://localhost:8081/publisher/all
+```
 
 ## Integration: Game Manager with New Publisher Manager (homegrown REST service)
 
 When creating a game via `POST /game`, the Game Manager service:
-1. Receives game creation request with `publisherId`
-2. Validates the `publisherId` by calling "Acessing Data Mysql˜ (`http://localhost:8081/publisher/`)
-3. If publisher is valid, saves the game to MySQL
-4. Returns the created game or validation error
+1. How It Works: Game Creation Flow
 
-This ensures data consistency across both services.
--->
+When creating a game via `POST /game`:
 
-## Technology Stack
+1. **Receive Request**: Game Manager receives game creation request with `publisherId`
+2. **Real-time Validation**: Makes a fresh API call to Publisher Manager (`http://localhost:8081/publisher/`)
+3. **Verify Publisher**: Checks if the publisher exists (no caching - always current data)
+4. **Save or Reject**: 
+   - ✅ If valid → saves the game to MySQL
+   - ❌ If invalid → returns validation error
+5. **Return Response**: Created game or error message
 
+**Key Feature**: No caching means every game creation validates against the latest publisher data.
 - **Spring Boot**: 3.2.1
 - **Spring Data JPA**: Data persistence
 - **MySQL**: 8.0
@@ -398,44 +414,75 @@ This ensures data consistency across both services.
 - **Jakarta Validation**: Input validation
 - **Java**: 21+ (source & target)
 
-## Project Features
+## Features
 
-- ✅ UUID-based game identification
-- ✅ Publisher-based game filtering
-- ✅ Time tracking per game (date-hour mapping)
-- ✅ Input validation with custom error messages
-- ✅ Docker containerization for easy deployment
-- ✅ MySQL persistence with auto-DDL
-- ✅ CORS support for cross-origin requests
-- ✅ Fixed CVE-2023-22102 (MySQL Connector vulnerability)
+- ✅ **UUID-based game identification** - Unique game IDs
+- ✅ **Real-time publisher validation** - No caching, fresh validation every time
+- ✅ **Publisher-based game filtering** - Query games by publisher
+- ✅ **Time tracking per game** - Date-to-hours mapping
+- ✅ **Input validation** - Custom error messages with Jakarta Validation
+- ✅ **Docker containerization** - Easy deployment with docker-compose
+- ✅ **MySQL persistence** - Auto-DDL schema management
+- ✅ **CORS support** - Cross-origin requests enabled
+- ✅ **Microservices integration** - REST communication between services
+- ✅ **Security** - Fixed CVE-2023-22102 (MySQL Connector vulnerability)
 
 ## Development Notes
 
-- Entities use Lombok `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor` for clean code
-- JPA `@ElementCollection` for storing timePlayed maps
-- Spring Data JPA `Repository` with custom `findByPublisherId()` method
-- Input validation using Jakarta Bean Validation annotations
-- Service layer for business logic separation
-- Controllers expose three main REST endpoints
-- MySQL uses `spring.jpa.hibernate.ddl-auto=update` for schema management
+### Code Architecture
+- **Entities**: Use Lombok annotations (`@Data`, `@NoArgsConstructor`, `@AllArgsConstructor`) for clean code
+- **Persistence**: JPA `@ElementCollection` for storing timePlayed maps
+- **Repository**: Spring Data JPA with custom `findByPublisherId()` method
+- **Validation**: Jakarta Bean Validation with custom validators
+- **Service Layer**: Business logic separation with `GameService` and `PublisherService`
+- **Controllers**: Three main REST endpoints with centralized exception handling
+- **Database**: MySQL with `spring.jpa.hibernate.ddl-auto=update` for schema management
 
+### Publisher Validation
+- **No Caching**: `PublisherService` makes real-time API calls to validate publishers
+- **Fresh Data**: Every game creation triggers a new validation request
+- **Error Handling**: Graceful handling of publisher-manager service failures 
 
-// 
-
-
-## Troubleshooting
-
-### Check running containers
+Running Containers
 ```bash
 docker-compose ps
 ```
 
-### Rebuild and restart
+### View Logs
+```bash
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs -f game-manager
+docker-compose logs -f spring-app
+```
+
+### Rebuild and Restart
 ```bash
 docker-compose up -d --build
 ```
 
-### Clean everything (remove volumes and containers)
+### Clean Everything
+```bash
+# Remove containers and volumes
+docker-compose down -v
+```
+
+### Common Issues
+
+**Publisher validation fails:**
+- Ensure publisher-manager service is running: `docker-compose ps`
+- Check if publisher exists: `curl http://localhost:8081/publisher/all`
+- Add publisher: `curl http://localhost:8081/publisher/add -d name=<name> -d email=<email>`
+
+**Database connection issues:**
+- Wait for MySQL health check to complete (~30 seconds on first start)
+- Check MySQL logs: `docker-compose logs mysql-db`
+
+**Port conflicts:**
+- Ensure ports 8080, 8081, and 3306 are available
+- Use `lsof -i :8080` to check port usage Clean everything (remove volumes and containers)
 ```bash
 docker-compose down -v
 ```
