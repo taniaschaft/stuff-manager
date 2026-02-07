@@ -1,4 +1,4 @@
-# Game Manager API
+# Game Manager Backend App
 
 Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records with real-time publisher validation.
 
