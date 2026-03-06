@@ -1,0 +1,411 @@
+# ============================================================
+# Azure Pipelines - Java App → AWS ECS (Fargate) + CloudFormation
+# ============================================================
+# Prerequisites:
+#   1. AWS Service Connection named 'aws-service-connection' in Azure DevOps
+#   2. Variable group 'aws-vars' with:
+#        - AWS_ACCOUNT_ID
+#        - AWS_REGION
+#        - ECR_REPOSITORY_NAME
+#        - ECS_CLUSTER_NAME
+#        - ECS_SERVICE_NAME
+#        - ECS_TASK_FAMILY
+#        - CF_STACK_NAME
+#        - CF_TEMPLATE_PATH  (e.g. infra/ecs-stack.yml)
+# ============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - release/*
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: aws-vars
+  - name: MAVEN_CACHE_FOLDER
+    value: $(Pipeline.Workspace)/.m2/repository
+  - name: IMAGE_TAG
+    value: $(Build.BuildId)
+  - name: ECR_IMAGE_URI
+    value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY_NAME):$(IMAGE_TAG)
+
+stages:
+
+# ============================================================
+# STAGE 1 — BUILD & TEST
+# ============================================================
+- stage: Build
+  displayName: 'Build & Test'
+  jobs:
+  - job: BuildJava
+    displayName: 'Maven Build + Unit Tests'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+
+    # Cache Maven dependencies to speed up builds
+    - task: Cache@2
+      displayName: 'Cache Maven packages'
+      inputs:
+        key: 'maven | "$(Agent.OS)" | **/pom.xml'
+        restoreKeys: |
+          maven | "$(Agent.OS)"
+        path: $(MAVEN_CACHE_FOLDER)
+
+    # Set Java version
+    - task: JavaToolInstaller@0
+      displayName: 'Use Java 17'
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+
+    # Build and run unit tests
+    - task: Maven@4
+      displayName: 'Maven build + test'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        options: >
+          -Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)
+          -DskipITs=true
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+
+    # Publish JAR as pipeline artifact
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish JAR artifact'
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/target'
+        artifact: 'jar-artifact'
+        publishLocation: 'pipeline'
+
+# ============================================================
+# STAGE 2 — SECURITY & QUALITY SCAN
+# ============================================================
+- stage: Scan
+  displayName: 'Security & Code Quality'
+  dependsOn: Build
+  jobs:
+  - job: SecurityScan
+    displayName: 'OWASP Dependency Check + Dockerfile Lint'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifact: 'jar-artifact'
+        path: '$(System.DefaultWorkingDirectory)/target'
+
+    # OWASP Dependency vulnerability scan
+    - task: dependency-check-build-task@6
+      displayName: 'OWASP Dependency Check'
+      inputs:
+        projectName: '$(Build.Repository.Name)'
+        scanPath: '$(System.DefaultWorkingDirectory)'
+        format: 'HTML,JUNIT'
+        failOnCVSS: '7'
+      continueOnError: true
+
+    # Lint Dockerfile
+    - script: |
+        docker run --rm -i hadolint/hadolint < Dockerfile || true
+      displayName: 'Hadolint - Dockerfile lint'
+
+    # Publish OWASP scan results
+    - task: PublishTestResults@2
+      displayName: 'Publish OWASP results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/dependency-check-junit.xml'
+      condition: always()
+
+# ============================================================
+# STAGE 3 — DOCKER BUILD & PUSH TO ECR
+# ============================================================
+- stage: DockerBuild
+  displayName: 'Docker Build & Push to ECR'
+  dependsOn: Scan
+  jobs:
+  - job: PushToECR
+    displayName: 'Build Docker image and push to Amazon ECR'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifact: 'jar-artifact'
+        path: '$(System.DefaultWorkingDirectory)/target'
+
+    # Authenticate to Amazon ECR
+    - task: AWSCLI@1
+      displayName: 'ECR Docker login'
+      inputs:
+        awsCredentials: 'aws-service-connection'
+        regionName: '$(AWS_REGION)'
+        awsCommand: 'ecr'
+        awsSubCommand: 'get-login-password'
+        awsArguments: '--region $(AWS_REGION)'
+      name: ecrLogin
+
+    - script: |
+        aws ecr get-login-password --region $(AWS_REGION) | \
+          docker login --username AWS --password-stdin \
+          $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+      displayName: 'Docker login to ECR'
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_DEFAULT_REGION: $(AWS_REGION)
+
+    # Build Docker image
+    - task: Docker@2
+      displayName: 'Build Docker image'
+      inputs:
+        command: 'build'
+        dockerfile: '$(System.DefaultWorkingDirectory)/Dockerfile'
+        buildContext: '$(System.DefaultWorkingDirectory)'
+        repository: '$(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY_NAME)'
+        tags: |
+          $(IMAGE_TAG)
+          latest
+
+    # Scan image for vulnerabilities with Trivy
+    - script: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:latest image \
+          --exit-code 1 \
+          --severity HIGH,CRITICAL \
+          $(ECR_IMAGE_URI)
+      displayName: 'Trivy image vulnerability scan'
+      continueOnError: true
+
+    # Push image to ECR
+    - task: Docker@2
+      displayName: 'Push image to ECR'
+      inputs:
+        command: 'push'
+        repository: '$(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY_NAME)'
+        tags: |
+          $(IMAGE_TAG)
+          latest
+
+# ============================================================
+# STAGE 4 — DEPLOY INFRASTRUCTURE (CloudFormation)
+# ============================================================
+- stage: Infrastructure
+  displayName: 'Deploy Infrastructure via CloudFormation'
+  dependsOn: DockerBuild
+  jobs:
+  - deployment: DeployInfra
+    displayName: 'CloudFormation stack deploy'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'infrastructure'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # Deploy or update the CloudFormation stack
+          - task: CloudFormationCreateOrUpdateStack@1
+            displayName: 'Deploy ECS CloudFormation stack'
+            inputs:
+              awsCredentials: 'aws-service-connection'
+              regionName: '$(AWS_REGION)'
+              stackName: '$(CF_STACK_NAME)'
+              templateSource: 'file'
+              templateFile: '$(CF_TEMPLATE_PATH)'
+              templateParametersSource: 'inline'
+              templateParameters: |
+                [
+                  { "ParameterKey": "ClusterName",    "ParameterValue": "$(ECS_CLUSTER_NAME)" },
+                  { "ParameterKey": "ServiceName",    "ParameterValue": "$(ECS_SERVICE_NAME)" },
+                  { "ParameterKey": "TaskFamily",     "ParameterValue": "$(ECS_TASK_FAMILY)" },
+                  { "ParameterKey": "ECRImageURI",    "ParameterValue": "$(ECR_IMAGE_URI)" },
+                  { "ParameterKey": "AWSRegion",      "ParameterValue": "$(AWS_REGION)" }
+                ]
+              capabilityAutoExpand: true
+              failTaskOnUnchanged: false
+
+# ============================================================
+# STAGE 5 — DEPLOY TO ECS (Staging)
+# ============================================================
+- stage: DeployStaging
+  displayName: 'Deploy to ECS — Staging'
+  dependsOn: Infrastructure
+  jobs:
+  - deployment: DeployToStaging
+    displayName: 'Update ECS service in staging'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'staging'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # Register new ECS Task Definition revision with updated image
+          - script: |
+              TASK_DEF=$(aws ecs describe-task-definition \
+                --task-definition $(ECS_TASK_FAMILY) \
+                --query 'taskDefinition' \
+                --output json)
+
+              NEW_TASK_DEF=$(echo $TASK_DEF | jq \
+                --arg IMAGE "$(ECR_IMAGE_URI)" \
+                '.containerDefinitions[0].image = $IMAGE |
+                 del(.taskDefinitionArn, .revision, .status,
+                     .requiresAttributes, .placementConstraints,
+                     .compatibilities, .registeredAt, .registeredBy)')
+
+              NEW_TASK_ARN=$(aws ecs register-task-definition \
+                --cli-input-json "$NEW_TASK_DEF" \
+                --query 'taskDefinition.taskDefinitionArn' \
+                --output text)
+
+              echo "##vso[task.setvariable variable=NEW_TASK_ARN]$NEW_TASK_ARN"
+              echo "New task definition: $NEW_TASK_ARN"
+            displayName: 'Register new ECS task definition'
+            env:
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_DEFAULT_REGION: $(AWS_REGION)
+
+          # Update ECS Service to use new task definition (rolling deploy)
+          - script: |
+              aws ecs update-service \
+                --cluster $(ECS_CLUSTER_NAME) \
+                --service $(ECS_SERVICE_NAME) \
+                --task-definition $(NEW_TASK_ARN) \
+                --force-new-deployment
+
+              echo "Waiting for ECS service to stabilize..."
+              aws ecs wait services-stable \
+                --cluster $(ECS_CLUSTER_NAME) \
+                --services $(ECS_SERVICE_NAME)
+
+              echo "ECS service updated successfully."
+            displayName: 'Update ECS service (rolling deploy)'
+            env:
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_DEFAULT_REGION: $(AWS_REGION)
+
+          # Smoke test — check ALB health endpoint
+          - script: |
+              echo "Running smoke tests against staging..."
+              sleep 20
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$(STAGING_ALB_URL)/actuator/health)
+              if [ "$STATUS" != "200" ]; then
+                echo "Smoke test FAILED — HTTP $STATUS"
+                exit 1
+              fi
+              echo "Smoke test PASSED — HTTP $STATUS"
+            displayName: 'Smoke test — health check'
+
+# ============================================================
+# STAGE 6 — DEPLOY TO ECS (Production) — Manual Approval Gate
+# ============================================================
+- stage: DeployProduction
+  displayName: 'Deploy to ECS — Production'
+  dependsOn: DeployStaging
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToProduction
+    displayName: 'Update ECS service in production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'production'         # <-- manual approval configured on this environment in Azure DevOps
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # Register new task definition (same as staging)
+          - script: |
+              TASK_DEF=$(aws ecs describe-task-definition \
+                --task-definition $(ECS_TASK_FAMILY) \
+                --query 'taskDefinition' \
+                --output json)
+
+              NEW_TASK_DEF=$(echo $TASK_DEF | jq \
+                --arg IMAGE "$(ECR_IMAGE_URI)" \
+                '.containerDefinitions[0].image = $IMAGE |
+                 del(.taskDefinitionArn, .revision, .status,
+                     .requiresAttributes, .placementConstraints,
+                     .compatibilities, .registeredAt, .registeredBy)')
+
+              NEW_TASK_ARN=$(aws ecs register-task-definition \
+                --cli-input-json "$NEW_TASK_DEF" \
+                --query 'taskDefinition.taskDefinitionArn' \
+                --output text)
+
+              echo "##vso[task.setvariable variable=NEW_TASK_ARN]$NEW_TASK_ARN"
+            displayName: 'Register new ECS task definition (prod)'
+            env:
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_DEFAULT_REGION: $(AWS_REGION)
+
+          # Deploy to production ECS service
+          - script: |
+              aws ecs update-service \
+                --cluster $(ECS_CLUSTER_NAME)-prod \
+                --service $(ECS_SERVICE_NAME)-prod \
+                --task-definition $(NEW_TASK_ARN) \
+                --force-new-deployment
+
+              echo "Waiting for production ECS service to stabilize..."
+              aws ecs wait services-stable \
+                --cluster $(ECS_CLUSTER_NAME)-prod \
+                --services $(ECS_SERVICE_NAME)-prod
+
+              echo "Production deployment complete."
+            displayName: 'Update production ECS service'
+            env:
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_DEFAULT_REGION: $(AWS_REGION)
+
+          # Production smoke test
+          - script: |
+              echo "Running production smoke tests..."
+              sleep 30
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$(PROD_ALB_URL)/actuator/health)
+              if [ "$STATUS" != "200" ]; then
+                echo "Production smoke test FAILED — HTTP $STATUS"
+                echo "Consider rolling back task definition!"
+                exit 1
+              fi
+              echo "Production smoke test PASSED — HTTP $STATUS"
+            displayName: 'Smoke test — production health check'
+
+          # Tag the successful deployment in git
+          - script: |
+              git config user.email "pipeline@azuredevops.com"
+              git config user.name "Azure Pipeline"
+              git tag "release-$(Build.BuildId)"
+              git push origin "release-$(Build.BuildId)"
+            displayName: 'Tag release in git'
+            continueOnError: true
