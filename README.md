@@ -1,6 +1,6 @@
-# Game Manager Backend App
+# stuff Manager Backend App
 
-Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track games by publisher and maintain play time records with real-time publisher validation.
+Spring Boot 3.2.1 REST API for stuff Management with MySQL integration. Track stuffs by publisher and maintain play time records with real-time publisher validation.
 
 ## Table of Contents
 - [Project Structure](#project-structure)
@@ -16,24 +16,24 @@ Spring Boot 3.2.1 REST API for Game Management with MySQL integration. Track gam
 ## Project Structure
 
 ```
-game-manager/
+stuff-manager/
 │   │   └── PublisherClient.java         # REST client for publisher validation
 │   ├── config/
 │   │   └── RestTemplateConfig.java      # HTTP client configuration
 │   ├── controller/
-│   │   ├── GameController.java          # REST API endpoints
+│   │   ├── stuffController.java          # REST API endpoints
 │   │   └── GlobalExceptionHandler.java  # Centralized exception handling
 │   ├── dto/
-│   │   ├── GameResponse.java            # Game response DTO
+│   │   ├── stuffResponse.java            # stuff response DTO
 │   │   └── PublisherDTO.java            # Publisher data transfer object
 │   ├── model/
-│   │   ├── Game.java                    # Game entity (JPA)
-│   │   ├── GameHoursValidator.java      # Custom validator implementation
-│   │   └── ValidGameHours.java          # Custom validation annotation
+│   │   ├── stuff.java                    # stuff entity (JPA)
+│   │   ├── stuffHoursValidator.java      # Custom validator implementation
+│   │   └── ValidstuffHours.java          # Custom validation annotation
 │   ├── repository/
-│   │   └── GameRepository.java          # Data access layer
+│   │   └── stuffRepository.java          # Data access layer
 │   └── service/
-│       ├── GameService.java             # Business logic
+│       ├── stuffService.java             # Business logic
 │       ├── PublisherService.java        # Real-time publisher validation
 │       └── InvalidPublisherException.java  # Custom exception
 ├── src/main/resources/
@@ -50,7 +50,7 @@ game-manager/
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd game-manager
+cd stuff-manager
 
 # Start all services with Docker Compose
 docker-compose up -d --build
@@ -59,18 +59,18 @@ docker-compose up -d --build
 curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendo@nintendo.com
 curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com
 
-# Create a game
-curl -X POST http://localhost:8080/game \
+# Create a stuff
+curl -X POST http://localhost:8080/stuff \
   -H "Content-Type: application/json" \
   -d '{"publisherId":"nintendo","name":"Mario","timePlayed":{"2023-05-01":10}}'
 ```
 
 ## Publisher Manager Integration
 
-The Game Manager validates publishers using an external **Publisher Manager** service available at:
+The stuff Manager validates publishers using an external **Publisher Manager** service available at:
 - **Docker Hub**: `taniaschaft/accessing-data-mysql:latest`
 - **Internal URL**: `http://localhost:8081/publisher/`
-- **Validation**: Real-time (no caching) - every game creation makes a fresh API call
+- **Validation**: Real-time (no caching) - every stuff creation makes a fresh API call
 
 ### Publisher Service Behavior
 - **No Caching**: Each POST request validates the publisher by calling the publisher-manager service
@@ -82,20 +82,20 @@ The Game Manager validates publishers using an external **Publisher Manager** se
 
 ## API Endpoints
 
-### Game Operations
+### stuff Operations
 
-1. **POST /game** - Create a new game
+1. **POST /stuff** - Create a new stuff
    - **Required fields**: `publisherId`, `name`, `timePlayed`
    - **Validation**: 
      - `publisherId`: Non-empty string
      - `name`: 3-20 characters
      - `timePlayed`: Non-empty Map of dates to hours played
 
-2. **GET /game** - Retrieve all games
-   - Returns all games from the database
+2. **GET /stuff** - Retrieve all stuffs
+   - Returns all stuffs from the database
 
-3. **GET /game?publisherId={publisherId}** - Retrieve games by publisher
-   - Filter games by specific publisher ID
+3. **GET /stuff?publisherId={publisherId}** - Retrieve stuffs by publisher
+   - Filter stuffs by specific publisher ID
 
 ## Setup & Run
 
@@ -112,7 +112,7 @@ The Game Manager validates publishers using an external **Publisher Manager** se
 docker-compose up -d --build 
 
 # View logs
-docker-compose logs -f game-manager
+docker-compose logs -f stuff-manager
 docker-compose logs -f mysql-db
 
 # Stop services
@@ -120,7 +120,7 @@ docker-compose down -v
 ```
 
 **Services Started:**
-- Game Manager API: `http://localhost:8080/game`
+- stuff Manager API: `http://localhost:8080/stuff`
 - Publisher Manager API: `http://localhost:8081/publisher/`
 - MySQL Database: Internal network only  
 
@@ -138,7 +138,7 @@ This section covers running the application locally for development and testing 
 ```bash
 # Clone the repository (if not already done)
 git clone <repository-url>
-cd game-manager
+cd stuff-manager
 
 #### Running Tests
 The project includes unit and integration tests that use an in-memory H2 database.
@@ -157,7 +157,7 @@ mvn test
 mvn test -X
 
 # Run a specific test class
-mvn test -Dtest=GameValidationTest
+mvn test -Dtest=stuffValidationTest
 
 # Run tests and generate coverage report
 mvn clean test jacoco:report
@@ -193,7 +193,7 @@ spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
 ```bash
 # Start MySQL using Docker (without the full docker-compose)
 docker run -d \
-  --name game-manager-mysql \
+  --name stuff-manager-mysql \
   -e MYSQL_ROOT_PASSWORD=root \
   -e MYSQL_DATABASE=bootdb \
   -e MYSQL_USER=user \
@@ -223,12 +223,12 @@ mvn spring-boot:run
 
 After running `mvn clean install`, the built JAR file is located at:
 ```
-target/game-manager-1.0.0.jar
+target/stuff-manager-1.0.0.jar
 ```
 
 You can also run the JAR directly:
 ```bash
-java -jar target/game-manager-1.0.0.jar
+java -jar target/stuff-manager-1.0.0.jar
 ```
 
 ### Docker Deployment
@@ -249,7 +249,7 @@ docker pull taniaschaft/accessing-data-mysql:latest
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐                 │
-│  │  Game Manager    │  │ ADM API.         |                 │
+│  │  stuff Manager    │  │ ADM API.         |                 │
 │  │  Port: 8080      │  │  Port: 8081      │                 │
 │  │ (Host: 8080)     │  │  (Host: 8081)    │                 │
 │  └──────────────────┘  └──────────────────┘                 │
@@ -268,7 +268,7 @@ docker pull taniaschaft/accessing-data-mysql:latest
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 
-Game Manager:      Stores games, validates with Publisher Manager
+stuff Manager:      Stores stuffs, validates with Publisher Manager
 Publisher Manager: Validates publisher information
 MySQL:             Shared database for both services
 ```
@@ -284,10 +284,10 @@ MySQL:             Shared database for both services
 
 ## Sample API Requests
 
-### Create a Game
+### Create a stuff
 
 ```bash
-curl -X POST http://localhost:8080/game \
+curl -X POST http://localhost:8080/stuff \
   -H "Content-Type: application/json" \
   -d '{
     "publisherId": "nintendo",
@@ -316,7 +316,7 @@ curl -X POST http://localhost:8080/game \
 ```
 Another example (without publisherId):
 ```bash
-curl -s -X POST http://localhost:8080/game \
+curl -s -X POST http://localhost:8080/stuff \
   -H "Content-Type: application/json" \
   -d '{
     "id": "",
@@ -335,14 +335,14 @@ curl -s -X POST http://localhost:8080/game \
 ``` 
 
 
-### Get All Games
+### Get All stuffs
 ```bash
-curl http://localhost:8080/game
+curl http://localhost:8080/stuff
 ```
 
-### Get Games by Publisher
+### Get stuffs by Publisher
 ```bash
-curl http://localhost:8080/game?publisherId=nintendo
+curl http://localhost:8080/stuff?publisherId=nintendo
 ```
 
 ## Docker Services
@@ -350,17 +350,17 @@ curl http://localhost:8080/game?publisherId=nintendo
 ### MySQL Container
 - **Image**: `mysql:8.0`
 - **Container**: `mysql-db`
-- **Port**: `3306` (not exposed to localhost, only to the game-service so I removed from docker-compose)
+- **Port**: `3306` (not exposed to localhost, only to the stuff-service so I removed from docker-compose)
 - **Storage**: Persistent volume `mysql_data`
 - **Health Check**: Enabled with `mysqladmin ping`
 
-### Game Manager API Container
+### stuff Manager API Container
 - **Image**: Built from Dockerfile (multi-stage Maven build)
-- **Container**: `game-manager`
+- **Container**: `stuff-manager`
 - **Port**: `8080`
 - **Depends On**: MySQL (waits for health check)
 - **Network**: `inatel` bridge network
-- **Function**: Manages game sessions with real-time publisher validation
+- **Function**: Manages stuff sessions with real-time publisher validation
 
 ### Publisher Manager Container
 - **Image**: `taniaschaft/accessing-data-mysql:latest` (from Docker Hub)
@@ -375,36 +375,36 @@ curl http://localhost:8080/game?publisherId=nintendo
   - `MYSQL_HOST: mysql`
   - `MYSQL_PORT: 3306`
   - `SPRING_PROFILES_ACTIVE: dev`
-- **Function**: Validates publisher information for game registrations
+- **Function**: Validates publisher information for stuff registrations
 
 ### Sample Publisher Commands
 ```bash
 # Add publishers to the system
 curl http://localhost:8081/publisher/add -d name=nintendo -d email=nintendo@nintendo.com
 curl http://localhost:8081/publisher/add -d name=sega -d email=sega@sega.com
-curl http://localhost:8081/publisher/add -d name=abcgames -d email=abcgames@abcgames.com
-curl http://localhost:8081/publisher/add -d name=2kgames -d email=2kgames@2kgames.com
+curl http://localhost:8081/publisher/add -d name=abcstuffs -d email=abcstuffs@abcstuffs.com
+curl http://localhost:8081/publisher/add -d name=2kstuffs -d email=2kstuffs@2kstuffs.com
 
 # Get all publishers
 curl http://localhost:8081/publisher/all
 ```
 
-## Integration: Game Manager with New Publisher Manager (homegrown REST service)
+## Integration: stuff Manager with New Publisher Manager (homegrown REST service)
 
-When creating a game via `POST /game`, the Game Manager service:
-1. How It Works: Game Creation Flow
+When creating a stuff via `POST /stuff`, the stuff Manager service:
+1. How It Works: stuff Creation Flow
 
-When creating a game via `POST /game`:
+When creating a stuff via `POST /stuff`:
 
-1. **Receive Request**: Game Manager receives game creation request with `publisherId`
+1. **Receive Request**: stuff Manager receives stuff creation request with `publisherId`
 2. **Real-time Validation**: Makes a fresh API call to Publisher Manager (`http://localhost:8081/publisher/`)
 3. **Verify Publisher**: Checks if the publisher exists (no caching - always current data)
 4. **Save or Reject**: 
-   - ✅ If valid → saves the game to MySQL
+   - ✅ If valid → saves the stuff to MySQL
    - ❌ If invalid → returns validation error
-5. **Return Response**: Created game or error message
+5. **Return Response**: Created stuff or error message
 
-**Key Feature**: No caching means every game creation validates against the latest publisher data.
+**Key Feature**: No caching means every stuff creation validates against the latest publisher data.
 - **Spring Boot**: 3.2.1
 - **Spring Data JPA**: Data persistence
 - **MySQL**: 8.0
@@ -416,10 +416,10 @@ When creating a game via `POST /game`:
 
 ## Features
 
-- ✅ **UUID-based game identification** - Unique game IDs
+- ✅ **UUID-based stuff identification** - Unique stuff IDs
 - ✅ **Real-time publisher validation** - No caching, fresh validation every time
-- ✅ **Publisher-based game filtering** - Query games by publisher
-- ✅ **Time tracking per game** - Date-to-hours mapping
+- ✅ **Publisher-based stuff filtering** - Query stuffs by publisher
+- ✅ **Time tracking per stuff** - Date-to-hours mapping
 - ✅ **Input validation** - Custom error messages with Jakarta Validation
 - ✅ **Docker containerization** - Easy deployment with docker-compose
 - ✅ **MySQL persistence** - Auto-DDL schema management
@@ -434,13 +434,13 @@ When creating a game via `POST /game`:
 - **Persistence**: JPA `@ElementCollection` for storing timePlayed maps
 - **Repository**: Spring Data JPA with custom `findByPublisherId()` method
 - **Validation**: Jakarta Bean Validation with custom validators
-- **Service Layer**: Business logic separation with `GameService` and `PublisherService`
+- **Service Layer**: Business logic separation with `stuffService` and `PublisherService`
 - **Controllers**: Three main REST endpoints with centralized exception handling
 - **Database**: MySQL with `spring.jpa.hibernate.ddl-auto=update` for schema management
 
 ### Publisher Validation
 - **No Caching**: `PublisherService` makes real-time API calls to validate publishers
-- **Fresh Data**: Every game creation triggers a new validation request
+- **Fresh Data**: Every stuff creation triggers a new validation request
 - **Error Handling**: Graceful handling of publisher-manager service failures 
 
 Running Containers
@@ -454,7 +454,7 @@ docker-compose ps
 docker-compose logs
 
 # Specific service
-docker-compose logs -f game-manager
+docker-compose logs -f stuff-manager
 docker-compose logs -f spring-app
 ```
 
